@@ -1,0 +1,27 @@
+# Use an official Python image as the base image
+FROM python:3.9-slim
+
+# Set environment variables to avoid issues during installation
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install system dependencies for Basemap
+RUN apt-get update && apt-get install -y \
+    libgeos-dev \
+    libproj-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file to the container
+COPY requirements.txt /app/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code to the container
+COPY . /app/
+
+# Command to run the script
+CMD ["python", "events.py"]
