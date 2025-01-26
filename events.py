@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 from datetime import datetime, timedelta
 import pandas as pd
+from pathlib import Path
 from mpl_toolkits.basemap import Basemap
 import sys
 
@@ -27,7 +28,7 @@ else:
     datum = dat
 
 # File path
-h5_file_path = f'/home/jay/repos/remote-sensing-2-hail-events/arhiva_podataka/ODC.REF_{datum}.h5'
+h5_file_path = f'/home/jay/repos/remote-sensing-2-hail-events/202401/ODC.REF_{datum}.h5'
 
 try:
     # Load the HDF5 file
@@ -43,9 +44,12 @@ try:
     radar_timestamp = f"{startdate} {starttime[:2]}:{starttime[2:4]}:{starttime[4:6]}"
 
     # Apply thresholds for hail detection
-    dbz_threshold = 50
+    dbz_threshold = 65
+    dbz_upper_threshold = 80
     qind_threshold = 0.8
-    hail_mask = (ds1 > dbz_threshold) & (ds2 >= qind_threshold)
+    ds1 = np.where(np.isinf(ds1), np.nan, ds1)
+
+    hail_mask = (ds1 >= dbz_threshold) & (ds1 < dbz_upper_threshold) & (ds2 >= qind_threshold) & (~np.isnan(ds1))
 
     # Basemap settings (from HDF5 metadata or fixed values)
     xscale, xsize, yscale, ysize = 2000.0, 1900, 2000.0, 2200
@@ -67,7 +71,7 @@ try:
 
     # Convert Cartesian grid to latitude and longitude using Basemap
     lon_grid, lat_grid = m(x_grid, y_grid, inverse=True)
-
+    
     # Generate hail event list
     hail_events = []
     for i, j in np.argwhere(hail_mask):
@@ -81,8 +85,12 @@ try:
     # Save hail events to a CSV
     hail_df = pd.DataFrame(hail_events)
     if not hail_df.empty:
-        output_csv = f"hail_events_{datum}.csv"
-        hail_df.to_csv(output_csv, index=False)
+        output_csv = "hail_events.csv"
+        if Path(output_csv).exists():
+            hail_df.to_csv(output_csv, mode='a', header=False, index=False)  
+        else:
+            hail_df.to_csv(output_csv, mode='w', header=True, index=False)  
+
         print(f"Hail events detected. Saved to {output_csv}")
     else:
         print("No hail events detected.")
